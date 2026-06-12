@@ -1,10 +1,11 @@
 const http = require('http');
 
-const CITY = 'Lagos';
+const city = 'Lagos';
 
+// building the request options manually
 const options = {
   hostname: 'wttr.in',
-  path: `/${CITY}?format=j1`,
+  path: '/' + city + '?format=j1',
   method: 'GET',
   port: 80,
   headers: {
@@ -12,41 +13,48 @@ const options = {
   }
 };
 
-console.log('=== HTTP REQUEST ===');
-console.log(`Method: ${options.method}`);
-console.log(`Host: ${options.hostname}`);
-console.log(`Path: ${options.path}`);
-console.log('===================\n');
+// log what we're sending before it goes out
+console.log('--- sending request ---');
+console.log('method:', options.method);
+console.log('host:', options.hostname);
+console.log('path:', options.path);
+console.log('port:', options.port);
+console.log('-----------------------');
 
-const req = http.request(options, (res) => {
-  console.log('=== HTTP RESPONSE ===');
-  console.log(`Status Code: ${res.statusCode}`);
-  console.log(`Status Message: ${res.statusMessage}`);
-  console.log('Headers:', JSON.stringify(res.headers, null, 2));
-  console.log('====================\n');
+const req = http.request(options, function(res) {
 
-  let rawData = '';
+  // log what came back
+  console.log('\n--- response received ---');
+  console.log('status:', res.statusCode, res.statusMessage);
+  console.log('content-type:', res.headers['content-type']);
+  console.log('transfer-encoding:', res.headers['transfer-encoding']);
+  console.log('-------------------------');
 
-  res.on('data', (chunk) => {
-    rawData += chunk;
+  let body = '';
+
+  // data comes in chunks over TCP - collect them
+  res.on('data', function(chunk) {
+    console.log('chunk received, size:', chunk.length, 'bytes');
+    body += chunk;
   });
 
-  res.on('end', () => {
-    const parsed = JSON.parse(rawData);
-    const current = parsed.current_condition[0];
-    console.log('=== WEATHER DATA ===');
-    console.log(`City: ${CITY}`);
-    console.log(`Temperature: ${current.temp_C}°C`);
-    console.log(`Feels Like: ${current.FeelsLikeC}°C`);
-    console.log(`Condition: ${current.weatherDesc[0].value}`);
-    console.log(`Humidity: ${current.humidity}%`);
-    console.log(`Wind Speed: ${current.windspeedKmph} km/h`);
-    console.log('====================');
+  res.on('end', function() {
+    console.log('\n--- parsing response body ---');
+    const data = JSON.parse(body);
+    const now = data.current_condition[0];
+
+    console.log('\ncity      :', city);
+    console.log('temp      :', now.temp_C + 'c');
+    console.log('feels like:', now.FeelsLikeC + 'c');
+    console.log('condition :', now.weatherDesc[0].value);
+    console.log('humidity  :', now.humidity + '%');
+    console.log('wind      :', now.windspeedKmph + ' km/h');
   });
+
 });
 
-req.on('error', (e) => {
-  console.error(`Error: ${e.message}`);
+req.on('error', function(err) {
+  console.log('something went wrong:', err.message);
 });
 
 req.end();
